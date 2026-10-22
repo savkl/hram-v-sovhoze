@@ -228,7 +228,6 @@
         var times = sv.list.map(function (s) { return s[0]; }).filter(Boolean).join(" · ");
         h += '<button type="button" class="' + cls.join(" ") + '" data-d="' + key(dd) + '" aria-label="' + n + " " + MONTHS[dd.getMonth()] + (fi ? ", " + esc(fi.f) : "") + (times ? ", богослужение в " + times : "") + '">' +
           '<span class="cd-n">' + n + "</span>" +
-          (times ? '<span class="cd-t">' + times + "</span>" : "") +
           (fi ? '<span class="cd-f">' + esc(fi.s) + "</span>" : "") +
           (+dd === +today ? '<span class="cd-today">сегодня</span>' : "") + "</button>";
       }
