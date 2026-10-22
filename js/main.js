@@ -211,13 +211,10 @@
     };
     var renderDay = function () {
       var sv = services(sel), box = $("#day-info"), fast = fastOf(sel), s = SV[key(sel)] || {};
-      var saints = (s.m || []).map(function (x) { return "<li><b>" + esc(x) + "</b></li>"; }).join("") +
-        (s.o || []).map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("");
-      box.innerHTML = '<p class="eyebrow">' + DAYS[sel.getDay()] + (s.w ? " · " + esc(s.w) : "") + (fast ? " · " + fast : "") + "</p>" +
+      var main = sv.feast || (s.m && s.m.length ? s.m[0] : "");
+      box.innerHTML = '<p class="eyebrow">' + DAYS[sel.getDay()] + (fast ? " · " + fast : "") + "</p>" +
         '<h2 class="day-title">' + sel.getDate() + " " + MONTHS[sel.getMonth()] + "</h2>" +
-        (sv.feast ? '<p class="day-feast">' + esc(sv.feast) + "</p>" : "") +
-        (saints ? '<ul class="day-saints">' + saints + "</ul>" : "") +
-        (s.i && s.i.length ? '<p class="day-icons">' + esc(s.i.join(", ")) + "</p>" : "") +
+        (main ? '<p class="day-feast">' + esc(main) + "</p>" : "") +
         (sv.list.length ? serviceRows(sv.list) : '<p class="muted day-empty">Богослужения не совершаются. Храм открыт с ' + esc(S.openHours || "8:00–20:00").replace("–", " до ") + ".</p>");
     };
     var renderCal = function () {
