@@ -712,3 +712,19 @@ fieldset.field{border:0;padding:0;margin:0}
 .cal-day.has .cd-f{opacity:1}
 .cal-day{justify-content:space-between}
 @media (max-width:520px){.cal-day{justify-content:center}}
+
+/* кнопка меню — всегда в правом углу шапки */
+@media (max-width:1080px){
+  .hdr{justify-content:space-between}
+  .burger{margin-left:auto!important;margin-right:-10px}
+  .hdr-phone{margin-left:auto}
+  .hdr-phone+.burger{margin-left:6px!important}
+}
+@media (max-width:600px){.hdr-phone+.burger{margin-left:auto!important}}
+
+/* память святых в выбранном дне */
+.day-saints{list-style:none;padding:0;margin:4px 0 14px;font-size:16.5px;line-height:1.5;color:#d8ccb8}
+.day-saints li{padding:3px 0}
+.day-saints b{font-weight:500;color:var(--cream)}
+.day-icons{font-size:15.5px;color:var(--muted);margin:0 0 14px}
+.cal .cd-f{font-size:11.5px}

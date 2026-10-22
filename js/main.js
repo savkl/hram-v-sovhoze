@@ -204,11 +204,20 @@
   if (cal) {
     var today = new Date(); today = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     var view = new Date(today.getFullYear(), today.getMonth(), 1), sel = today;
+    var SV = window.SVYATCY || {};
+    var dayMain = function (dd) {
+      var s = SV[key(dd)];
+      return s && s.m && s.m.length ? s.m[0] : "";
+    };
     var renderDay = function () {
-      var sv = services(sel), box = $("#day-info"), fast = fastOf(sel);
-      box.innerHTML = '<p class="eyebrow">' + DAYS[sel.getDay()] + (fast ? " · " + fast : "") + "</p>" +
+      var sv = services(sel), box = $("#day-info"), fast = fastOf(sel), s = SV[key(sel)] || {};
+      var saints = (s.m || []).map(function (x) { return "<li><b>" + esc(x) + "</b></li>"; }).join("") +
+        (s.o || []).map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("");
+      box.innerHTML = '<p class="eyebrow">' + DAYS[sel.getDay()] + (s.w ? " · " + esc(s.w) : "") + (fast ? " · " + fast : "") + "</p>" +
         '<h2 class="day-title">' + sel.getDate() + " " + MONTHS[sel.getMonth()] + "</h2>" +
         (sv.feast ? '<p class="day-feast">' + esc(sv.feast) + "</p>" : "") +
+        (saints ? '<ul class="day-saints">' + saints + "</ul>" : "") +
+        (s.i && s.i.length ? '<p class="day-icons">' + esc(s.i.join(", ")) + "</p>" : "") +
         (sv.list.length ? serviceRows(sv.list) : '<p class="muted day-empty">Богослужения не совершаются. Храм открыт с ' + esc(S.openHours || "8:00–20:00").replace("–", " до ") + ".</p>");
     };
     var renderCal = function () {
@@ -228,7 +237,7 @@
         var times = sv.list.map(function (s) { return s[0]; }).filter(Boolean).join(" · ");
         h += '<button type="button" class="' + cls.join(" ") + '" data-d="' + key(dd) + '" aria-label="' + n + " " + MONTHS[dd.getMonth()] + (fi ? ", " + esc(fi.f) : "") + (times ? ", богослужение в " + times : "") + '">' +
           '<span class="cd-n">' + n + "</span>" +
-          (fi ? '<span class="cd-f">' + esc(fi.s) + "</span>" : "") +
+          ((fi || dayMain(dd)) ? '<span class="cd-f">' + esc(fi ? fi.s : dayMain(dd)) + "</span>" : "") +
           (+dd === +today ? '<span class="cd-today">сегодня</span>' : "") + "</button>";
       }
       $("#cal-grid").innerHTML = h;
