@@ -687,3 +687,17 @@ fieldset.field{border:0;padding:0;margin:0}
   .nav>a,.nav-drop>button{padding:12px 7px;font-size:14px}
   .nav .help{margin-left:6px;padding:12px 14px}
 }
+
+/* выбранный день — сразу под сеткой календаря */
+.cal #day-info{margin-top:18px;padding:clamp(20px,2.4vw,32px);border:1px solid var(--gold-dim);background:radial-gradient(500px 260px at 100% 0,color-mix(in srgb,var(--gold) 10%,transparent),transparent 70%),var(--kiot)}
+.cal #day-info .eyebrow{margin-bottom:4px}
+.cal #day-info .day-title{font-size:clamp(30px,3vw,44px);margin-bottom:6px}
+.cal #day-info .day-feast{font-size:clamp(20px,2vw,24px);margin:6px 0 14px}
+.cal #day-info .svc:first-of-type{margin-top:6px}
+.cal .cal-legend{margin-top:18px}
+@media (max-width:600px){
+  .cal{padding:14px}
+  .cal #day-info{padding:20px 18px}
+  .cal #day-info .svc{grid-template-columns:70px 1fr}
+  .cal #day-info .svc-time{font-size:26px}
+}

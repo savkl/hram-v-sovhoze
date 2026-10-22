@@ -238,7 +238,7 @@
       var b = e.target.closest(".cal-day"); if (!b) return;
       var p = b.dataset.d.split("-"); sel = new Date(+p[0], +p[1] - 1, +p[2]);
       renderCal(); renderDay();
-      if (window.innerWidth < 900) $("#day-info").scrollIntoView({ behavior: "smooth", block: "start" });
+      if (window.innerWidth < 900) $("#day-info").scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
     $("#cal-prev").addEventListener("click", function () { view = new Date(view.getFullYear(), view.getMonth() - 1, 1); renderCal(); });
     $("#cal-next").addEventListener("click", function () { view = new Date(view.getFullYear(), view.getMonth() + 1, 1); renderCal(); });
