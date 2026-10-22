@@ -126,12 +126,8 @@
       defaults: { ease: "expo.out" },
       onComplete: function () { finish(); if (lenis) lenis.start(); ST.refresh(); }
     });
-    var lines = emb.querySelectorAll('[pathLength]'), fills = emb.querySelectorAll(".t-fill");
-    gsap.set(lines, { strokeDasharray: 1, strokeDashoffset: 1 });
-    gsap.set(fills, { opacity: 0 });
-    tl.to(Array.prototype.slice.call(lines).reverse(), { strokeDashoffset: 0, duration: 1.1, stagger: .045, ease: "power2.inOut" }, .1)
-      .to(fills, { opacity: 1, duration: .6, stagger: .05, ease: "power1.out" }, 1.1)
-      .fromTo(emb, { filter: "drop-shadow(0 0 0 rgba(230,200,140,0))" }, { filter: "drop-shadow(0 0 22px rgba(230,200,140,.5))", duration: .9, ease: "sine.out" }, 1.3)
+    tl.fromTo(emb, { clipPath: "inset(100% 0% 0% 0%)", y: 12 }, { clipPath: "inset(0% 0% 0% 0%)", y: 0, duration: 1.6, ease: "expo.inOut" }, .1)
+      .fromTo(emb, { filter: "drop-shadow(0 0 0 rgba(230,200,140,0))" }, { filter: "drop-shadow(0 0 24px rgba(230,200,140,.5))", duration: .9, ease: "sine.out" }, 1.3)
       .from(doors.querySelector(".doors-name"), { y: 14, opacity: 0, duration: .9 }, 1.15)
       .to(doors.querySelector(".doors-center"), { opacity: 0, scale: .92, duration: .5, ease: "power2.in" }, 2.15)
       .to(doors.querySelector(".door-l"), { rotateY: 78, xPercent: -18, duration: 1.5, ease: "power3.inOut" }, 2.3)
