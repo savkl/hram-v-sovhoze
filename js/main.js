@@ -303,6 +303,108 @@
     }
   });
 
+  /* ---------- Новости из файла novosti.txt ---------- */
+  function parseRuDate(s) {
+    var m = String(s || "").match(/(\d{1,2})\s+([а-яё]+)\s+(\d{4})(?:[,\s]+(\d{1,2})[:.\-](\d{2}))?/i);
+    if (!m || MONTH_NUM[m[2].toLowerCase()] === undefined) return null;
+    return { d: new Date(+m[3], MONTH_NUM[m[2].toLowerCase()], +m[1]), time: m[4] ? +m[4] + ":" + m[5] : "" };
+  }
+  function parseNews(txt) {
+    var out = [];
+    String(txt).replace(/\r/g, "").split(/^-{3,}\s*$/m).forEach(function (block, idx) {
+      var lines = block.split("\n").filter(function (l) { return l.trim().charAt(0) !== "#"; });
+      var n = { text: [] }, inBody = false, para = [];
+      lines.forEach(function (raw) {
+        var line = raw.trim();
+        var f = !inBody && line.match(/^(Дата|Заголовок|Рубрика|Событие|Фото|Кнопка)\s*:\s*(.+)$/i);
+        if (f) { n[f[1].toLowerCase()] = f[2].trim(); return; }
+        if (!line) { if (n["заголовок"]) inBody = true; if (para.length) { n.text.push(para.join(" ")); para = []; } return; }
+        if (n["заголовок"]) { inBody = true; para.push(line); }
+      });
+      if (para.length) n.text.push(para.join(" "));
+      if (!n["заголовок"]) return;
+      var pd = parseRuDate(n["дата"]), ev = parseRuDate(n["событие"]);
+      out.push({
+        id: "n" + (pd ? key(pd.d).replace(/-/g, "") : "") + "-" + idx,
+        title: n["заголовок"], rubric: n["рубрика"] || "Новость",
+        date: pd ? pd.d : null, event: ev, photo: n["фото"] || "",
+        button: n["кнопка"] ? n["кнопка"].split("|").map(function (x) { return x.trim(); }) : null,
+        text: n.text
+      });
+    });
+    out.sort(function (a, b) { return (b.date || 0) - (a.date || 0); });
+    return out;
+  }
+  var NEWS = [];
+  var newsReady = fetch("novosti.txt?v=" + Date.now(), { cache: "no-store" })
+    .then(function (r) { if (!r.ok) throw new Error("нет файла"); return r.text(); })
+    .then(function (t) { NEWS = parseNews(t); }).catch(function () {});
+
+  var today0 = (function () { var x = new Date(); return new Date(x.getFullYear(), x.getMonth(), x.getDate()); })();
+  function upcoming(n) { return n.event && n.event.d >= today0; }
+  function fmtDate(d, withDow) { return d.getDate() + " " + MONTHS[d.getMonth()] + (withDow ? ", " + DAYS[d.getDay()] : ""); }
+  function eventLine(n) {
+    if (!n.event) return "";
+    return '<p class="ni-event"><span class="ni-event-d">' + n.event.d.getDate() + '</span><span><b>' + MONTHS[n.event.d.getMonth()] + ", " + DAYS[n.event.d.getDay()] + "</b>" + (n.event.time ? "<br>в " + esc(n.event.time) : "") + "</span></p>";
+  }
+  function newsItem(n, mode) {
+    var full = mode === "full", big = mode === "big";
+    var text = full ? n.text : n.text.slice(0, big ? 2 : 1);
+    var more = !full ? '<a class="btn" href="novosti.html#' + n.id + '">Подробнее</a>' : "";
+    var btn = n.button && n.button[1] ? '<a class="btn solid" href="' + esc(n.button[1]) + '">' + esc(n.button[0]) + "</a>" : "";
+    return '<article class="ni ni-' + mode + (n.photo ? " has-photo" : "") + '" id="' + (full ? n.id : "") + '">' +
+      (n.photo ? '<a class="ni-photo" href="' + esc(n.photo) + '" target="_blank" rel="noopener"><img loading="lazy" src="' + esc(n.photo) + '" alt="' + esc(n.title) + '"></a>' : "") +
+      '<div class="ni-body"><p class="ni-meta"><span class="ni-rubric">' + esc(n.rubric) + "</span>" + (n.date ? '<span class="ni-date">' + fmtDate(n.date) + " " + n.date.getFullYear() + "</span>" : "") + "</p>" +
+      "<h3 class=\"ni-title\">" + (full ? esc(n.title) : '<a href="novosti.html#' + n.id + '">' + esc(n.title) + "</a>") + "</h3>" +
+      eventLine(n) +
+      text.map(function (p) { return '<p class="ni-text">' + esc(p) + "</p>"; }).join("") +
+      ((btn || more) ? '<div class="ni-actions">' + btn + more + "</div>" : "") +
+      "</div></article>";
+  }
+
+  newsReady.then(function () {
+    var soon = NEWS.filter(upcoming).sort(function (a, b) { return a.event.d - b.event.d; });
+
+    /* Полоса-объявление на главной */
+    var ann = $("#announce");
+    if (ann && soon.length) {
+      var a = soon[0];
+      ann.innerHTML = '<div class="wrap announce-in"><span class="announce-tag">' + esc(a.rubric) + '</span><a class="announce-text" href="novosti.html#' + a.id + '"><b>' + fmtDate(a.event.d) + (a.event.time ? ", " + esc(a.event.time) : "") + "</b> — " + esc(a.title) + '</a><a class="announce-more" href="novosti.html#' + a.id + '">Подробнее</a></div>';
+      ann.hidden = false;
+    }
+
+    /* Новости на главной: главная крупно, ещё две рядом */
+    var home = $("#news-home");
+    if (home) {
+      if (!NEWS.length) { home.hidden = true; }
+      else {
+        var lead = soon[0] || NEWS[0];
+        var rest = NEWS.filter(function (n) { return n !== lead; }).slice(0, 2);
+        home.innerHTML = newsItem(lead, "big") + (rest.length ? '<div class="ni-row">' + rest.map(function (n) { return newsItem(n, "short"); }).join("") + "</div>" : "");
+      }
+    }
+
+    /* Страница «Новости» */
+    var list = $("#news-list");
+    if (list) {
+      list.innerHTML = NEWS.length ? NEWS.map(function (n) { return newsItem(n, "full"); }).join("")
+        : '<p class="muted">Новостей пока нет.</p>';
+      if (location.hash) { var t0 = document.getElementById(location.hash.slice(1)); if (t0) setTimeout(function () { t0.scrollIntoView({ block: "start" }); }, 60); }
+    }
+
+    /* Паломничества: ближайшие поездки из новостей */
+    var trips = $("#trips"), tripNews = soon.filter(function (n) { return /паломнич/i.test(n.rubric); });
+    if (trips && tripNews.length) {
+      trips.innerHTML = tripNews.map(function (n) { return newsItem(n, "big"); }).join("");
+      var sel = $("#trip-select");
+      if (sel) tripNews.forEach(function (n) {
+        var o = document.createElement("option");
+        o.textContent = n.title + " — " + fmtDate(n.event.d);
+        sel.insertBefore(o, sel.firstChild); sel.selectedIndex = 0;
+      });
+    }
+  });
+
   /* ---------- Новости и расписание из ВКонтакте ---------- */
   function vkDate(ts) { var d = new Date(ts * 1000); return d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear(); }
   function vkText(t, max) {
@@ -435,22 +537,6 @@
       }).catch(function () {});
     });
   });
-
-  /* ---------- Паломнические поездки ---------- */
-  var trips = $("#trips");
-  if (trips) {
-    var t0 = key(new Date());
-    var list = (S.trips || []).filter(function (t) { return t.date >= t0; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
-    if (list.length) {
-      trips.innerHTML = list.map(function (t) {
-        var p = t.date.split("-"), dd = new Date(+p[0], +p[1] - 1, +p[2]);
-        return '<article class="trip"><div class="trip-date"><b>' + dd.getDate() + "</b>" + MONTHS[dd.getMonth()] + "<br>" + DAYS[dd.getDay()] + '</div><div class="trip-body"><h3>' + esc(t.title) + "</h3>" + (t.text ? "<p>" + esc(t.text) + "</p>" : "") + (t.price ? '<p class="muted">Пожертвование: ' + esc(t.price) + "</p>" : "") + '<a class="link" href="#zapis" data-trip="' + esc(t.title + ", " + dd.getDate() + " " + MONTHS[dd.getMonth()]) + '">Записаться<span class="arr">→</span></a></div></article>';
-      }).join("");
-      var sel = $("#trip-select");
-      if (sel) list.forEach(function (t) { var o = document.createElement("option"); o.textContent = t.title + " — " + t.date.split("-").reverse().join("."); sel.insertBefore(o, sel.lastElementChild); });
-      $$("[data-trip]", trips).forEach(function (a) { a.addEventListener("click", function () { if (sel) sel.selectedIndex = Array.prototype.findIndex.call(sel.options, function (o) { return o.textContent.indexOf(a.dataset.trip.split(",")[0]) === 0; }); }); });
-    }
-  }
 
   /* ---------- Формы ---------- */
   var FORM_TITLES = { treba: "Заявка на требу с сайта храма", zapiska: "Записка с сайта храма", palomnichestvo: "Запись на паломничество с сайта храма", vopros: "Вопрос с сайта храма" };
