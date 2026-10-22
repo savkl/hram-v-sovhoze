@@ -30,7 +30,22 @@
   }
   $$("[data-slav]").forEach(lettering);
 
-  /* ---------- Меню ---------- */
+  /* ---------- Меню ----------
+     Если пункты меню не помещаются рядом с названием храма — показываем кнопку меню */
+  var hdrEl = $(".hdr"), logoEl = $(".hdr .logo"), navEl = $(".nav");
+  function fitNav() {
+    if (!hdrEl || !navEl || window.innerWidth <= 1080) { document.documentElement.classList.remove("nav-compact"); return; }
+    document.documentElement.classList.remove("nav-compact");
+    var lr = logoEl.getBoundingClientRect(), nr = navEl.getBoundingClientRect();
+    var tight = nr.left < lr.right + 16 || hdrEl.scrollWidth > hdrEl.clientWidth + 1;
+    document.documentElement.classList.toggle("nav-compact", tight);
+    if (!tight) document.body.classList.remove("menu-open");
+  }
+  fitNav();
+  window.addEventListener("resize", fitNav);
+  window.addEventListener("load", fitNav);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitNav);
+
   var burger = $(".burger");
   if (burger) burger.addEventListener("click", function () {
     var open = document.body.classList.toggle("menu-open");
