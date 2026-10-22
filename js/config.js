@@ -27,6 +27,8 @@ window.SITE = {
   telegram: "https://t.me/+NVFGvZDvnl00ZGNi",
   whatsapp: "https://chat.whatsapp.com/G2kNUDF2cB5JFcOz3MVybv",
 
+  // ВНИМАНИЕ: расписание служб теперь берётся из файла raspisanie.txt (см. ИНСТРУКЦИЯ.txt).
+  // Блоки weekly, feastEve, feastDay и special ниже больше не используются.
   // Обычное расписание. День недели: 0 — воскресенье, 1 — понедельник … 6 — суббота
   weekly: {
     6: [["17:00", "Всенощное бдение. Исповедь"]],

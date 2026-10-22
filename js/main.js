@@ -160,19 +160,39 @@
     return "";
   }
 
+  /* ---------- Расписание храма из файла raspisanie.txt ----------
+     Службы берутся только из этого файла. Даты вне файла — «расписание ещё не опубликовано». */
+  var MONTH_NUM = { "января": 0, "февраля": 1, "марта": 2, "апреля": 3, "мая": 4, "июня": 5, "июля": 6, "августа": 7, "сентября": 8, "октября": 9, "ноября": 10, "декабря": 11 };
+  var SCHED = {}, schedFrom = null, schedTo = null;
+  function parseSchedule(txt) {
+    var cur = null;
+    String(txt).replace(/\r/g, "").split("\n").forEach(function (raw) {
+      var line = raw.trim();
+      if (!line || line.charAt(0) === "#") { cur = line ? cur : null; return; }
+      var dm = line.match(/^(\d{1,2})\s+([а-яё]+)\s+(\d{4})$/i);
+      if (dm && MONTH_NUM[dm[2].toLowerCase()] !== undefined) {
+        var d = new Date(+dm[3], MONTH_NUM[dm[2].toLowerCase()], +dm[1]);
+        cur = SCHED[key(d)] = { feast: "", big: false, list: [] };
+        if (!schedFrom || d < schedFrom) schedFrom = d;
+        if (!schedTo || d > schedTo) schedTo = d;
+        return;
+      }
+      if (!cur) return;
+      var tm = line.match(/^(\d{1,2})[:.\-](\d{2})\s*[–—-]?\s*(.+)$/);
+      if (tm) { cur.list.push([+tm[1] + ":" + tm[2], tm[3].replace(/\.$/, "")]); return; }
+      if (line.charAt(0) === "!") { cur.big = true; line = line.slice(1).trim(); }
+      cur.feast = cur.feast ? cur.feast + ". " + line : line;
+    });
+    if (schedTo) schedTo = new Date(schedTo.getFullYear(), schedTo.getMonth(), schedTo.getDate());
+  }
+  var schedReady = fetch("raspisanie.txt?v=" + Date.now(), { cache: "no-store" })
+    .then(function (r) { if (!r.ok) throw new Error("нет файла"); return r.text(); })
+    .then(parseSchedule).catch(function () {});
+
+  function published(d) { return schedFrom && d >= schedFrom && d <= schedTo; }
   function services(d) {
-    var k = key(d), fi = feastInfo(d), feast = fi ? fi.f : "", list = [];
-    if (S.special && S.special[k]) return { list: S.special[k], feast: feast, info: fi };
-    var dow = d.getDay();
-    if (fi && /Пасха/.test(fi.s)) return { list: [["", "Пасхальное богослужение — время уточняйте в храме и в группе ВК"]], feast: feast, info: fi };
-    if (fi && /Рождество Христово/.test(fi.s)) return { list: [["", "Праздничное богослужение — время уточняйте в храме и в группе ВК"]], feast: feast, info: fi };
-    if (fi && fi.r >= 1 && dow !== 0) list = list.concat(S.feastDay || []);
-    else if (S.weekly && S.weekly[dow]) list = list.concat(S.weekly[dow]);
-    var next = addDays(d, 1), nf = feastInfo(next);
-    if (nf && nf.r >= 1 && next.getDay() !== 0 && !/Пасха/.test(nf.s)) {
-      list = list.filter(function (s) { return s[0] !== "17:00"; }).concat(S.feastEve || []);
-    }
-    return { list: list, feast: feast, info: fi };
+    var e = SCHED[key(d)], fi = feastInfo(d);
+    return { list: e ? e.list : [], feast: e && e.feast ? e.feast : "", big: !!(e && e.big), info: fi, known: published(d) };
   }
 
   function serviceRows(list) {
@@ -181,41 +201,48 @@
     }).join("");
   }
 
-  /* Ближайшие богослужения на главной */
-  var near = $("#nearest");
-  if (near) {
-    var now = new Date(), d = new Date(now.getFullYear(), now.getMonth(), now.getDate()), found = null;
-    for (var i = 0; i < 14 && !found; i++) {
-      var day = addDays(d, i), sv = services(day), list = sv.list;
-      if (i === 0) list = list.filter(function (s) { var t = s[0].split(":"); return !s[0] || +t[0] * 60 + +t[1] > now.getHours() * 60 + now.getMinutes() - 60; });
-      if (list.length) found = { day: day, list: list, feast: sv.feast, i: i };
+  schedReady.then(function () {
+    /* Ближайшие богослужения на главной */
+    var near = $("#nearest");
+    if (near) {
+      var now = new Date(), d = new Date(now.getFullYear(), now.getMonth(), now.getDate()), found = null;
+      for (var i = 0; i < 21 && !found; i++) {
+        var day = addDays(d, i), sv = services(day), list = sv.list;
+        if (i === 0) list = list.filter(function (s) { var t = s[0].split(":"); return +t[0] * 60 + +t[1] > now.getHours() * 60 + now.getMinutes() - 60; });
+        if (list.length) found = { day: day, list: list, feast: sv.feast, i: i };
+      }
+      if (found) {
+        $(".near-label", near).textContent = found.i === 0 ? "Сегодня в храме" : found.i === 1 ? "Завтра в храме" : "Ближайшее богослужение";
+        var dn = DAYS[found.day.getDay()];
+        $(".near-date", near).textContent = dn.charAt(0).toUpperCase() + dn.slice(1) + ", " + found.day.getDate() + " " + MONTHS[found.day.getMonth()];
+        $(".near-list", near).innerHTML = (found.feast ? '<p class="near-feast">' + esc(found.feast) + "</p>" : "") + serviceRows(found.list);
+      } else {
+        $(".near-label", near).textContent = "Расписание богослужений";
+        $(".near-date", near).textContent = "Смотрите во ВКонтакте";
+        $(".near-list", near).innerHTML = "";
+      }
     }
-    if (found) {
-      var lbl = found.i === 0 ? "Сегодня в храме" : found.i === 1 ? "Завтра в храме" : "Ближайшее богослужение";
-      $(".near-label", near).textContent = lbl;
-      var dn = DAYS[found.day.getDay()];
-      $(".near-date", near).textContent = dn.charAt(0).toUpperCase() + dn.slice(1) + ", " + found.day.getDate() + " " + MONTHS[found.day.getMonth()];
-      $(".near-list", near).innerHTML = (found.feast ? '<p class="near-feast">' + esc(found.feast) + "</p>" : "") + serviceRows(found.list);
-    }
-  }
 
-  /* Календарь на странице расписания: в клеточке — число, время служб, праздник */
-  var cal = $("#calendar");
-  if (cal) {
+    /* Календарь на странице расписания */
+    var cal = $("#calendar");
+    if (!cal) return;
     var today = new Date(); today = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     var view = new Date(today.getFullYear(), today.getMonth(), 1), sel = today;
     var SV = window.SVYATCY || {};
-    var dayMain = function (dd) {
+    var dayName = function (dd, sv) {
+      if (sv.feast) return sv.feast;
+      if (sv.info && sv.info.r >= 1) return sv.info.f;
       var s = SV[key(dd)];
-      return s && s.m && s.m.length ? s.m[0] : "";
+      return s && s.m && s.m.length ? s.m[0] : (sv.info ? sv.info.f : "");
     };
     var renderDay = function () {
-      var sv = services(sel), box = $("#day-info"), fast = fastOf(sel), s = SV[key(sel)] || {};
-      var main = sv.feast || (s.m && s.m.length ? s.m[0] : "");
+      var sv = services(sel), box = $("#day-info"), fast = fastOf(sel), main = dayName(sel, sv);
+      var body = sv.list.length ? serviceRows(sv.list)
+        : sv.known ? '<p class="muted day-empty">Богослужения не совершаются. Храм открыт с ' + esc(S.openHours || "8:00–20:00").replace("–", " до ") + ".</p>"
+        : '<p class="muted day-empty">Расписание на этот день ещё не опубликовано. Следите за объявлениями <a class="link" href="' + esc(S.vk) + '" target="_blank" rel="noopener">во ВКонтакте</a>.</p>';
       box.innerHTML = '<p class="eyebrow">' + DAYS[sel.getDay()] + (fast ? " · " + fast : "") + "</p>" +
         '<h2 class="day-title">' + sel.getDate() + " " + MONTHS[sel.getMonth()] + "</h2>" +
-        (main ? '<p class="day-feast">' + esc(main) + "</p>" : "") +
-        (sv.list.length ? serviceRows(sv.list) : '<p class="muted day-empty">Богослужения не совершаются. Храм открыт с ' + esc(S.openHours || "8:00–20:00").replace("–", " до ") + ".</p>");
+        (main ? '<p class="day-feast">' + esc(main) + "</p>" : "") + body;
     };
     var renderCal = function () {
       $("#cal-title").textContent = MONTHS_NOM[view.getMonth()] + " " + view.getFullYear();
@@ -223,18 +250,17 @@
       var h = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"].map(function (x, i) { return '<span class="cal-dow' + (i === 6 ? " red" : "") + '">' + x + "</span>"; }).join("");
       for (var i = 0; i < first; i++) h += '<span class="cal-empty"></span>';
       for (var n = 1; n <= days; n++) {
-        var dd = new Date(view.getFullYear(), view.getMonth(), n), sv = services(dd), fi = sv.info;
+        var dd = new Date(view.getFullYear(), view.getMonth(), n), sv = services(dd), fi = sv.info, name = dayName(dd, sv);
         var cls = ["cal-day"];
         if (sv.list.length) cls.push("has");
-        if ((fi && fi.r >= 1) || dd.getDay() === 0) cls.push("red");
-        if (fi && fi.r === 2) cls.push("great");
+        if (sv.big || (fi && fi.r >= 1) || dd.getDay() === 0) cls.push("red");
+        if (sv.big || (fi && fi.r === 2)) cls.push("great");
         if (fastOf(dd)) cls.push("fast");
         if (+dd === +today) cls.push("today");
         if (+dd === +sel) cls.push("sel");
-        var times = sv.list.map(function (s) { return s[0]; }).filter(Boolean).join(" · ");
-        h += '<button type="button" class="' + cls.join(" ") + '" data-d="' + key(dd) + '" aria-label="' + n + " " + MONTHS[dd.getMonth()] + (fi ? ", " + esc(fi.f) : "") + (times ? ", богослужение в " + times : "") + '">' +
+        h += '<button type="button" class="' + cls.join(" ") + '" data-d="' + key(dd) + '" aria-label="' + n + " " + MONTHS[dd.getMonth()] + (name ? ", " + esc(name) : "") + (sv.list.length ? ", есть богослужение" : "") + '">' +
           '<span class="cd-n">' + n + "</span>" +
-          ((fi || dayMain(dd)) ? '<span class="cd-f">' + esc(fi ? fi.s : dayMain(dd)) + "</span>" : "") +
+          (name ? '<span class="cd-f">' + esc(name) + "</span>" : "") +
           (+dd === +today ? '<span class="cd-today">сегодня</span>' : "") + "</button>";
       }
       $("#cal-grid").innerHTML = h;
@@ -249,17 +275,18 @@
     $("#cal-next").addEventListener("click", function () { view = new Date(view.getFullYear(), view.getMonth() + 1, 1); renderCal(); });
     renderCal(); renderDay();
 
-    /* Ближайшие праздники */
+    /* Ближайшие праздники: большие праздники из расписания и церковного календаря */
     var fl = $("#feast-list");
     if (fl) {
-      var y = today.getFullYear(), items = [], all = Object.assign({}, feasts(y), feasts(y + 1));
-      Object.keys(all).sort().forEach(function (k) {
-        var p = k.split("-"), dd = new Date(+p[0], +p[1] - 1, +p[2]);
-        if (dd >= today && all[k].r >= 1 && items.length < 10) items.push('<li><span class="fl-date">' + dd.getDate() + " " + MONTHS[dd.getMonth()] + ", " + DAYS[dd.getDay()] + "</span><span>" + esc(all[k].f) + "</span></li>");
-      });
+      var items = [];
+      for (var j = 0; j < 400 && items.length < 10; j++) {
+        var dd = addDays(today, j), sv = services(dd);
+        var nm = sv.big ? sv.feast : (sv.info && sv.info.r >= 1 ? sv.info.f : "");
+        if (nm) items.push('<li><span class="fl-date">' + dd.getDate() + " " + MONTHS[dd.getMonth()] + ", " + DAYS[dd.getDay()] + "</span><span>" + esc(nm) + "</span></li>");
+      }
       fl.innerHTML = items.join("");
     }
-  }
+  });
 
   /* ---------- Новости и расписание из ВКонтакте ---------- */
   function vkDate(ts) { var d = new Date(ts * 1000); return d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear(); }
