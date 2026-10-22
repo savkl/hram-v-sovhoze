@@ -1,0 +1,33 @@
+AddDefaultCharset UTF-8
+DirectoryIndex index.html
+ErrorDocument 404 /404.html
+AddType image/webp .webp
+AddType image/svg+xml .svg
+AddType font/woff2 .woff2
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+# Адреса старого сайта ведут на новые страницы
+RewriteRule ^index\.php/raspisanie-bogosluzhenij /raspisanie.html [R=301,L]
+RewriteRule ^raspisanie-bogosluzhenij\.html$ /raspisanie.html [R=301,L]
+RewriteRule ^index\.php/o-khrame/istoriya /istoriya.html [R=301,L]
+RewriteRule ^index\.php/o-khrame/svyatyni-khrama /svyatyni.html [R=301,L]
+RewriteRule ^index\.php/o-khrame/o-nastoyatele-khrama /duhovenstvo.html [R=301,L]
+RewriteRule ^index\.php/o-khrame/help-hram /pomoch.html [R=301,L]
+RewriteRule ^index\.php/rekwizity /pomoch.html [R=301,L]
+RewriteRule ^index\.php/o-khrame/forma-obratnoj-svyazi /kontakty.html [R=301,L]
+RewriteRule ^index\.php/forma-obratnoj-svyazi /kontakty.html [R=301,L]
+RewriteRule ^index\.php/palomnichestvo /palomnichestva.html [R=301,L]
+RewriteRule ^index\.php/vesti /novosti.html [R=301,L]
+RewriteRule ^index\.php/?$ / [R=301,L]
+</IfModule>
+
+<IfModule mod_expires.c>
+ExpiresActive On
+ExpiresByType image/webp "access plus 1 month"
+ExpiresByType image/svg+xml "access plus 1 month"
+ExpiresByType font/woff2 "access plus 1 year"
+ExpiresByType text/css "access plus 1 day"
+ExpiresByType application/javascript "access plus 1 hour"
+ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
